@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { MeiliSearch, Index } from 'meilisearch';
 import { PrismaService } from 'prisma/prisma.service';
 
+// Use a more specific type if possible, but 'any' is fine for demonstration
 type RawProduct = any;
 
 @Injectable()
@@ -168,9 +169,13 @@ export class SearchService implements OnModuleInit {
       .map((ps: any) => ps.style?.name ?? ps.style?.slug)
       .filter(Boolean);
 
-    // attributes: produce arrays for filtering and text search
-    const attributes = (product.attributes || []).map((a: any) => {
-      const attributeKey = a.attribute?.key ?? a.attributeId ?? a.attribute?.id;
+    // --- ENHANCED ATTRIBUTE HANDLING START ---
+
+    // 1. Extract Product-Level Attributes
+    const productAttributes = (product.attributes || []).map((a: any) => {
+      // Use slug, then key, then ID as fallback for attribute identifier
+      const attributeKey =
+        a.attribute?.slug ?? a.attribute?.key ?? a.attributeId;
       // value stored earlier as JSON string in productAttribute.value
       let val = a.value;
       try {
@@ -178,16 +183,43 @@ export class SearchService implements OnModuleInit {
       } catch {
         // keep original
       }
-      return {
-        key: attributeKey,
-        value: val,
-      };
+      return { key: attributeKey, value: val };
     });
 
-    const attributes_keys = attributes.map((a: any) => a.key);
-    const attributes_values = attributes.flatMap((a: any) =>
-      Array.isArray(a.value) ? a.value : [String(a.value ?? '')],
+    // 2. Extract Variant-Level Attributes (e.g., Size, Color)
+    const variantAttributes = variants.flatMap((v: any) =>
+      (v.variantAttributes || []).map((va: any) => {
+        const attributeKey = va.attribute?.slug ?? va.attributeId;
+        // va.value is the raw value string
+        let val = va.value;
+        return { key: attributeKey, value: val };
+      }),
     );
+
+    // 3. Combine All Attributes
+    const allAttributes = [...productAttributes, ...variantAttributes].filter(
+      (a) => a.key,
+    );
+
+    // 4. Create key/value arrays for Meilisearch
+    const attributes_keys = allAttributes
+      .map((a: any) => a.key)
+      .filter(Boolean);
+
+    // Flatten all values (including array values from parsed JSON fields)
+    const attributes_values = allAttributes.flatMap((a: any) => {
+      const value = a.value;
+      // If array (from product JSON attribute), use it; otherwise, wrap string value.
+      return Array.isArray(value) ? value : [String(value ?? '')];
+    });
+
+    // Deduplicate keys and values for cleaner indexing
+    const unique_attributes_keys = Array.from(new Set(attributes_keys));
+    const unique_attributes_values = Array.from(
+      new Set(attributes_values),
+    ).filter(Boolean);
+
+    // --- ENHANCED ATTRIBUTE HANDLING END ---
 
     const media = (product.media || []).map((m: any) => m.url).filter(Boolean);
 
@@ -209,9 +241,10 @@ export class SearchService implements OnModuleInit {
       categories,
       categoriesNames,
       styles,
-      attributes,
-      attributes_keys,
-      attributes_values,
+      // Use combined attributes for the Meilisearch document
+      attributes: allAttributes,
+      attributes_keys: unique_attributes_keys,
+      attributes_values: unique_attributes_values,
       variantsTitles,
       media,
       createdAt: product.createdAt
@@ -232,6 +265,8 @@ export class SearchService implements OnModuleInit {
         variants: {
           include: {
             inventoryItems: true,
+            // 💡 NEW: Include variant attributes for clothwear filtering
+            attributes: { include: { attribute: true } },
           },
         },
         productCategories: { include: { category: true } },
@@ -275,7 +310,13 @@ export class SearchService implements OnModuleInit {
       const p = await this.prisma.product.findUnique({
         where: { id: productId },
         include: {
-          variants: { include: { inventoryItems: true } },
+          variants: {
+            include: {
+              inventoryItems: true,
+              // 💡 NEW: Include variant attributes
+              attributes: { include: { attribute: true } },
+            },
+          },
           productCategories: { include: { category: true } },
           styles: { include: { style: true } },
           attributes: { include: { attribute: true } },
@@ -298,7 +339,13 @@ export class SearchService implements OnModuleInit {
       const p = await this.prisma.product.findUnique({
         where: { id: productId },
         include: {
-          variants: { include: { inventoryItems: true } },
+          variants: {
+            include: {
+              inventoryItems: true,
+              // 💡 NEW: Include variant attributes
+              attributes: { include: { attribute: true } },
+            },
+          },
           productCategories: { include: { category: true } },
           styles: { include: { style: true } },
           attributes: { include: { attribute: true } },
