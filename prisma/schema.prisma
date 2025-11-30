@@ -1,0 +1,613 @@
+// ----------------------------
+// Prisma Generators & Datasource
+// ----------------------------
+
+generator zod {
+  provider  = "prisma-zod-generator"
+  output    = "../src/generated/zod"
+  relations = "true"
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["strictUndefinedChecks"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------
+// Stable enums
+// ----------------------------
+
+enum UserRole {
+  BUYER
+  SELLER
+  ADMIN
+  SUPER_ADMIN
+  MODERATOR
+  INVENTORY_MANAGER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  UNISEX
+  OTHER
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING_PAYMENT
+  CONFIRMED
+  PACKED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+  RETURN_REQUESTED
+  RETURNED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum InventoryEventType {
+  ADJUSTMENT
+  SALE
+  RESTOCK
+  RETURN
+  DAMAGE
+}
+
+enum ProductType {
+  TOP
+  BOTTOM
+  SET
+  OUTERWEAR
+  FOOTWEAR
+  ACCESSORY
+}
+
+enum Fit {
+  REGULAR
+  SLIM
+  OVERSIZED
+  RELAXED
+  SKINNY
+}
+
+enum Season {
+  SUMMER
+  WINTER
+  SPRING
+  AUTUMN
+  ALL_SEASON
+}
+
+enum AgeGroup {
+  ADULT
+  TEEN
+  KIDS
+  TODDLER
+  INFANT
+}
+
+enum MaterialType {
+  NATURAL
+  SYNTHETIC
+  BLEND
+}
+
+enum Condition {
+  NEW
+  LIKE_NEW
+  GENTLY_USED
+  USED
+  REFURBISHED
+}
+
+// ----------------------------
+// Permissions
+// ----------------------------
+
+model RolePermission {
+  id        String   @id @default(uuid())
+  role      UserRole
+  resource  String
+  action    String
+  createdAt DateTime @default(now())
+
+  @@index([role])
+  @@index([resource, action])
+}
+
+// ----------------------------
+// ATTRIBUTE SYSTEM
+// ----------------------------
+
+model Attribute {
+  id   String @id @default(uuid())
+  slug String @unique
+  name String
+  kind String
+
+  options Json?
+  pattern String?
+  min     Float?
+  max     Float?
+
+  createdAt DateTime @default(now())
+
+  values  AttributeValue[]
+  group   AttributeGroup?  @relation(fields: [groupId], references: [id])
+  groupId String?
+
+  productAttributes ProductAttribute[]
+  variantAttributes VariantAttribute[]
+
+  categoryAttributes CategoryAttribute[] // ← FIX ADDED
+}
+
+model AttributeValue {
+  id          String    @id @default(uuid())
+  attributeId String
+  attribute   Attribute @relation(fields: [attributeId], references: [id])
+  value       String
+
+  @@unique([attributeId, value])
+}
+
+model AttributeGroup {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  attributes Attribute[]
+}
+
+// ----------------------------
+// TAXONOMY SYSTEM
+// ----------------------------
+
+model Taxonomy {
+  id        String         @id @default(uuid())
+  key       String         @unique
+  label     String
+  isActive  Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  terms     TaxonomyTerm[]
+}
+
+model TaxonomyTerm {
+  id         String   @id @default(uuid())
+  taxonomyId String
+  taxonomy   Taxonomy @relation(fields: [taxonomyId], references: [id])
+
+  parentId String?
+  parent   TaxonomyTerm?  @relation("TermToChildren", fields: [parentId], references: [id])
+  children TaxonomyTerm[] @relation("TermToChildren")
+
+  name        String
+  slug        String
+  description String?
+  meta        Json?
+  isActive    Boolean  @default(true)
+  rank        Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  products ProductTaxonomyTerm[]
+
+  @@unique([taxonomyId, slug])
+  @@index([taxonomyId])
+  @@index([name])
+}
+
+model ProductTaxonomyTerm {
+  id        String @id @default(uuid())
+  productId String
+  termId    String
+
+  product   Product      @relation(fields: [productId], references: [id])
+  term      TaxonomyTerm @relation(fields: [termId], references: [id])
+  createdAt DateTime     @default(now())
+
+  @@unique([productId, termId])
+}
+
+// ----------------------------
+// Optional Lookup Tables
+// ----------------------------
+
+model Material {
+  id        String       @id @default(uuid())
+  name      String
+  slug      String       @unique
+  type      MaterialType
+  meta      Json?
+  createdAt DateTime     @default(now())
+}
+
+model Style {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  products ProductStyle[]
+}
+
+model ProductStyle {
+  id        String @id @default(uuid())
+  productId String
+  styleId   String
+
+  product Product @relation(fields: [productId], references: [id])
+  style   Style   @relation(fields: [styleId], references: [id])
+
+  @@unique([productId, styleId])
+}
+
+// ----------------------------
+// USERS & SELLERS
+// ----------------------------
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  phone        String?    @unique
+  passwordHash String
+  displayName  String?
+  bio          String?
+  roles        UserRole[] @default([BUYER])
+  isVerified   Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+
+  seller    Seller?
+  orders    Order[]
+  reviews   Review[]
+  addresses Address[]
+  auditLogs AuditLog[]
+}
+
+model Seller {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  shopName      String
+  slug          String   @unique
+  description   String?
+  isActive      Boolean  @default(true)
+  ratingAverage Float?   @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id])
+  products Product[]
+  payouts  Payout[]
+  orders   Order[]
+}
+
+model Payout {
+  id          String    @id @default(uuid())
+  sellerId    String
+  seller      Seller    @relation(fields: [sellerId], references: [id])
+  amountCents Int
+  currency    String    @default("USD")
+  status      String
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+}
+
+// ----------------------------
+// CATEGORY TREE
+// ----------------------------
+model Category {
+  id   String @id @default(uuid())
+  name String
+  slug String @unique
+
+  inheritMode String @default("NONE")
+  type        String @default("GENERIC")
+
+  parentId String?
+  parent   Category?  @relation("CategoryToChildren", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryToChildren")
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  productCategories  ProductCategory[]
+  categoryAttributes CategoryAttribute[] // ← FIX ADDED
+
+  @@index([parentId])
+  @@index([slug])
+}
+
+model CategoryAttribute {
+  id          String @id @default(uuid())
+  categoryId  String
+  attributeId String
+
+  required       Boolean @default(false)
+  variantAllowed Boolean @default(false)
+  position       Int     @default(0)
+
+  category  Category  @relation(fields: [categoryId], references: [id])
+  attribute Attribute @relation(fields: [attributeId], references: [id])
+
+  @@unique([categoryId, attributeId])
+  @@index([categoryId])
+  @@index([attributeId])
+}
+
+model ProductCategory {
+  id         String @id @default(uuid())
+  productId  String
+  categoryId String
+
+  product  Product  @relation(fields: [productId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([productId, categoryId])
+}
+
+// ----------------------------
+// PRODUCTS + VARIANTS + ATTRIBUTES
+// ----------------------------
+
+model Product {
+  id          String    @id @default(uuid())
+  sellerId    String?
+  title       String
+  slug        String    @unique
+  description String?
+  status      String    @default("DRAFT")
+  visibility  String    @default("PUBLIC")
+  handle      String?
+  brand       String?
+  weightGrams Int?
+  dimensions  Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  seller            Seller?               @relation(fields: [sellerId], references: [id])
+  attributes        ProductAttribute[]
+  variants          ProductVariant[]
+  media             ProductMedia[]
+  productCategories ProductCategory[]
+  styles            ProductStyle[]
+  taxonomyTerms     ProductTaxonomyTerm[]
+  reviews           Review[]
+}
+
+model ProductAttribute {
+  id          String @id @default(uuid())
+  productId   String
+  attributeId String
+  value       String
+
+  product   Product   @relation(fields: [productId], references: [id])
+  attribute Attribute @relation(fields: [attributeId], references: [id])
+
+  @@unique([productId, attributeId])
+}
+
+model ProductMedia {
+  id        String   @id @default(uuid())
+  productId String
+  url       String
+  altText   String?
+  kind      String   @default("IMAGE")
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model ProductVariant {
+  id             String   @id @default(uuid())
+  productId      String
+  sku            String   @unique
+  title          String?
+  priceCents     Int
+  compareAtCents Int?
+  barcode        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  product        Product            @relation(fields: [productId], references: [id])
+  attributes     VariantAttribute[]
+  inventoryItems InventoryItem[]
+  orderItems     OrderItem[]
+}
+
+model VariantAttribute {
+  id          String @id @default(uuid())
+  variantId   String
+  attributeId String
+  value       String
+
+  productVariant ProductVariant @relation(fields: [variantId], references: [id])
+  attribute      Attribute      @relation(fields: [attributeId], references: [id])
+
+  @@unique([variantId, attributeId])
+}
+
+model InventoryItem {
+  id             String   @id @default(uuid())
+  variantId      String
+  location       String?
+  quantityOnHand Int      @default(0)
+  reserved       Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  variant         ProductVariant   @relation(fields: [variantId], references: [id])
+  inventoryEvents InventoryEvent[]
+}
+
+model InventoryEvent {
+  id              String             @id @default(uuid())
+  inventoryItemId String
+  eventType       InventoryEventType
+  quantityChange  Int
+  reason          String?
+  referenceId     String?
+  createdAt       DateTime           @default(now())
+
+  item InventoryItem @relation(fields: [inventoryItemId], references: [id])
+}
+
+// ----------------------------
+// ORDERS + ORDER ITEMS + PAYMENTS
+// ----------------------------
+
+model Order {
+  id            String        @id @default(uuid())
+  buyerId       String
+  sellerId      String?
+  code          String        @unique
+  status        OrderStatus   @default(PENDING_PAYMENT)
+  totalCents    Int
+  currency      String        @default("USD")
+  subtotalCents Int
+  taxCents      Int
+  shippingCents Int
+  discountCents Int
+  paymentStatus PaymentStatus @default(PENDING)
+  placedAt      DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  buyer  User    @relation(fields: [buyerId], references: [id])
+  seller Seller? @relation(fields: [sellerId], references: [id])
+
+  items     OrderItem[]
+  payments  Payment[]
+  shipments Shipment[]
+  timeline  OrderTimeline[]
+  logs      AuditLog[]
+}
+
+model OrderItem {
+  id             String   @id @default(uuid())
+  orderId        String
+  variantId      String
+  title          String
+  unitPriceCents Int
+  quantity       Int
+  totalCents     Int
+  createdAt      DateTime @default(now())
+
+  order   Order          @relation(fields: [orderId], references: [id])
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  orderId     String
+  provider    String
+  providerId  String?
+  amountCents Int
+  currency    String        @default("USD")
+  status      PaymentStatus @default(PENDING)
+  feeCents    Int?
+  rawResponse Json?
+  createdAt   DateTime      @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model Shipment {
+  id           String    @id @default(uuid())
+  orderId      String
+  carrier      String
+  trackingCode String?
+  costCents    Int
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model OrderTimeline {
+  id        String      @id @default(uuid())
+  orderId   String
+  status    OrderStatus
+  note      String?
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+// ----------------------------
+// Reviews & Addresses
+// ----------------------------
+
+model Review {
+  id        String   @id @default(uuid())
+  productId String
+  userId    String
+  rating    Int
+  title     String?
+  body      String?
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+}
+
+model Address {
+  id         String   @id @default(uuid())
+  userId     String
+  label      String?
+  line1      String
+  line2      String?
+  city       String
+  state      String?
+  postalCode String
+  country    String
+  phone      String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// ----------------------------
+// Audit Logs
+// ----------------------------
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  payload    Json?
+  createdAt  DateTime @default(now())
+
+  user    User?   @relation(fields: [userId], references: [id])
+  order   Order?  @relation(fields: [orderId], references: [id])
+  orderId String?
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now())
+}

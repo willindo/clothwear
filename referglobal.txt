@@ -1,0 +1,139 @@
+High-level roadmap (backend → frontend cohesion)
+
+Each phase below is self-contained: implement backend APIs + DB model → immediately implement frontend UI, hooks, types, tests and monitoring for that feature.
+
+Auth (DONE)
+
+Backend: register, login, profile, hashing, conflict handling.
+
+Frontend: AuthContext, register/login forms, local session, protected routes.
+
+Users / Admin list (DONE / partial)
+
+Backend: GET /users (pagination, role filter), CRUD.
+
+Frontend: admin users table, pagination, filters, actions.
+
+Products / Catalog (NEXT — recommended) ← Core for e-commerce
+
+Backend: Product model, CRUD, filtering, pagination, categories, search.
+
+Frontend: product listing, product detail, product create/edit (admin), hooks, optimistic UI.
+
+Cart & Orders
+
+Backend: cart endpoints, order creation, status updates.
+
+Frontend: cart UI, checkout flow, order history, order detail.
+
+Payments
+
+Backend: payment intent endpoints, webhooks.
+
+Frontend: checkout integration, token handling, secure flows.
+
+Admin & RBAC
+
+Backend: roles, guards, admin-only endpoints, audit logs.
+
+Frontend: admin panel, role-aware UI, server-side checks.
+
+Media / File Uploads & CDN
+
+Backend: signed upload URLs, image processing.
+
+Frontend: upload UI, previews, progress, CDN URLs.
+
+Search & Filters
+
+Backend: optimized search (Elastic/Typesense) or DB full-text, facets.
+
+Frontend: filter drawer, search-as-you-type, debounce, analytics.
+
+Notifications / Emails
+
+Backend: email verification, transactional email, push/Socket.
+
+Frontend: verification flows, notification center, toasts.
+
+Observability / Security / CI
+
+Backend/infra: metrics, logs (Prometheus/Grafana), rate limiting, WAF, secrets.
+
+Frontend: source map upload, Sentry, CI tests, e2e.
+
+Phase template (what to do for every phase)
+
+When you pick a phase use this checklist.
+
+Backend
+
+Add Prisma model + migration.
+
+Create DTOs (class-validator) + Controller + Service.
+
+Add RBAC/guards if needed.
+
+Add unit tests for service and integration tests for controller.
+
+Add OpenAPI (NestJS Swagger) for contract.
+
+Add error handling (400,401,403,404,409,500).
+
+Frontend
+
+Add types to lib/types/* (or share via package).
+
+Add API helpers (lib/api.ts).
+
+Add React Query hooks (useProducts, useCreateProduct, etc).
+
+Add pages/components/forms (react-hook-form + validation).
+
+Add loading, skeletons, error UI, success toasts.
+
+Add unit + e2e tests (Jest, Cypress).
+
+Accessibility checks & responsive design.
+
+Contract
+
+Add example request/response in docs (postman/Swagger/openapi).
+
+Make sure error shapes are consistent: { message: string; details?: any }.
+curl -X POST http://localhost:3001/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@mail.com","password":"1234567"}'
+
+curl -X POST http://localhost:3001/products \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWhhbzY4cWQwMDAwY2xtazZkM3Nkc2Z3IiwiZW1haWwiOiJ0ZXN0QG1haWwuY29tIiwiaWF0IjoxNzYxODAzNzg2LCJleHAiOjE3NjI0MDg1ODZ9._at7y5sekWC6K6g3tvU_eIImjhQmOUNqNDqYLzU0lqI","user" \
+  -d '{
+    "name": "Jeans Shirt",
+    "description": "Lightweight summer shirt",
+    "price": 499,
+    "stock": 50,
+    "images": ["https://example.com/img1.jpg", "https://example.com/img2.jpg"]
+  }'
+
+curl -X DELETE http://localhost:3001/products/cmhau7sqs0005cl593v7440h2 \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWhhbzY4cWQwMDAwY2xtazZkM3Nkc2Z3IiwiZW1haWwiOiJ0ZXN0QG1haWwuY29tIiwiaWF0IjoxNzYxNzE5Nzk3LCJleHAiOjE3NjIzMjQ1OTd9.xH0a1VgKeOId72oDjgDYSwKkTHYDugKcS78A_U93Yaw" \
+  -H "Content-Type: application/json"
+
+curl -X PATCH http://localhost:3001/products/cmhcy3q640000cl4a1k5r36ui \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWhhbzY4cWQwMDAwY2xtazZkM3Nkc2Z3IiwiZW1haWwiOiJ0ZXN0QG1haWwuY29tIiwiaWF0IjoxNzYxODAzNzg2LCJleHAiOjE3NjI0MDg1ODZ9._at7y5sekWC6K6g3tvU_eIImjhQmOUNqNDqYLzU0lqI" \
+  -d '{
+    "name": "Saree Schiffon ",
+    "description": "Now available in premium cotton blend",
+    "price": 741,
+    "stock": 25,
+    "gender": "MENS",
+    "sizes": [
+      { "size": "M", "quantity": 5 },
+      { "size": "L", "quantity": 10 }
+    ]
+  }'
+  🚀 (Optional Future Enhancements)
+
+

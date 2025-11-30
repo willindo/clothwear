@@ -1,0 +1,132 @@
+rzp_live_RSdqJwUqBHuiYN = Live Key ID
+mwPTjkqRTtsPsTucNyNK75Lg =Live Key Secret
+ ls -a ~/
+cat << 'EOF' >> ~/.zshrc
+content 
+EOF
+badsha@badsha-VirtualBox:~/dev/payment$ cat reserve.txt
+🔮
+{
+  "Registered Name": "Razorpay Software Limited",
+  "CIN": "U72200KA2013PLC097389",
+  "PAN": "AAGCR4375J",
+  "TAN": "BLRR14773D"
+}
+FRONTEND_URL=http://10.0.2.15:3000
+1. Service Names
+App (NestJS) → payment-api
+Database → payment-db
+Admin (pgAdmin) → payment-pgadmin
+2. Ports
+NestJS inside container → 3000
+Expose outside (host) → 3002
+Postgres inside container → 5432
+Expose outside (host) → 5432 (ok since only one DB running)
+pgAdmin inside container → 80
+Expose outside (host) → 5050
+
+docker compose down -v --remove-orphans
+docker compose build --no-cache
+docker compose up -d
+docker compose logs -f payment-api
+
+docker compose exec payment-api npx prisma migrate dev
+docker ps --format "table {{.Names}}\t{{.Ports}}"
+docker exec -it payment-service npx nest info
+docker compose restart payment
+docker compose up -d payment-db payment-pgadmin
+
+
+ find ~/dev/payment -type f -name "*.module.ts" \
+   -not -path "*/node_modules/*" \
+   -not -path "*/dist/*" \
+   -not -path "*/.next/*" \
+   -exec sh -c 'echo "==== {} ===="; cat "{}"; echo' \;
+
+// tree -I 'node_modules|dist|.next|*.tsbuildinfo|*.log' -a ~/dev/payment/apps/api
+
+find ~/dev/payment -type f \( -name "*.controller.ts" -o -name "*.service.ts" -o -name "*.module.ts" \) \
+  -exec sh -c 'echo "==== {} ===="; cat "{}"; echo' \;
+  
+find /home/badsha/dev/reload-ops/apps/frontend/pages/api \
+     /home/badsha/dev/reload-ops/apps/frontend/pages/auth \
+     /home/badsha/dev/reload-ops/apps/frontend/lib \
+     /home/badsha/dev/reload-ops/apps/frontend/context \
+     -type f -exec sh -c 'echo "==== {} ===="; cat "{}"; echo' \;
+
+
+-type f \( -name "*.controller.ts" -o -name "*.service.ts" -o -name "*.module.ts" \)
+find ~/dev/reload-ops/apps/frontend \
+  -not -path "*/node_modules/*" \ 
+  -not -path "*/dist/*" \
+  -not -path "*/.next/*" \
+  -not -path "*/styles/*" \
+  -not -name "package.*" \
+  -not -name "*.json" \
+  -not -name "*config.js" \
+  -exec sh -c 'echo "==== {} ===="; cat "{}"; echo' \;
+
+
+find ~/dev/reload-ops/apps/frontend  \
+  -not -path "*/node_modules/*" \
+   -not -path "*/dist/*" \
+   -not -path "*/.next/*" \
+   -not -path "*/styles/* \
+  -exec sh -c 'echo "==== {} ===="; cat "{}"; echo' \;
+
+docker compose exec payment-api npx prisma migrate deploy
+docker compose exec payment-api npx prisma migrate reset
+docker compose exec payment-db psql -U postgres -d payment_db -c '\dt'
+badsha@badsha-VirtualBox:~/dev/payment$ 
+
+npm run zod:sync
+
+import { Product } from "@/generated/zod/ProductSchema";
+
+import { CreateProductSchema } from "@/generated/zod/ProductSchema";
+import { ProductSchema } from '@/generated/zod/ProductSchema';
+
+// Use ProductSchema for validation
+
+function validateProduct(data: unknown) {
+  return CreateProductSchema.parse(data);
+}
+
+
+
+
+/home/badsha/dev/mono-commerce/scripts/sync-types.js
+  7,5: if (process.env.RENDER || process.env.NODE_ENV === "production") {
+  7,27: if (process.env.RENDER || process.env.NODE_ENV === "production") {
+
+/home/badsha/dev/mono-commerce/src/auth/auth.service.ts
+  54,20:     const isProd = process.env.NODE_ENV === 'production';
+  56,15:       secret: process.env.JWT_SECRET || 'supersecret',
+  57,21:       // expiresIn: process.env.JWT_EXPIRES_IN || (isProd ? "1d" : "7d"),
+  58,21:       // expiresIn: process.env.JWT_EXPIRES_IN
+  59,23:       //   ? parseInt(process.env.JWT_EXPIRES_IN)
+  67,15:       secure: process.env.NODE_ENV === 'production',
+  68,17:       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  86,15:       secure: process.env.NODE_ENV === 'production',
+  87,17:       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+
+/home/badsha/dev/mono-commerce/src/auth/jwt.strategy.ts
+  16,20:       secretOrKey: process.env.JWT_SECRET || 'supersecret',
+
+/home/badsha/dev/mono-commerce/src/app.module.ts
+  22,29:       envFilePath: [`.env.${process.env.NODE_ENV}`, '.env'],
+
+/home/badsha/dev/mono-commerce/src/main.ts
+  10,18:   const isProd = process.env.NODE_ENV === 'production';
+  17,7:       process.env.FRONTEND_URL,
+  31,20:   await app.listen(process.env.PORT ?? 3001, '0.0.0.0'); // 👈 important
+  33,29:     `🚀 Server running in ${process.env.NODE_ENV} mode on port ${process.env.PORT ?? 3001}`,
+  33,66:     `🚀 Server running in ${process.env.NODE_ENV} mode on port ${process.env.PORT ?? 3001}`GIT FLOW=============
+  
+  =============== GIT FLOW===========
+git init
+git add .
+git commit -m "Initial project setup"
+git branch -M main
+git remote add origin <YOUR_REMOTE_REPOSITORY_URL>
+git push -u origin main

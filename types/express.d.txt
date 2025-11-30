@@ -1,0 +1,17 @@
+import 'express';
+// Extend Express types globally
+declare global {
+  namespace Express {
+    // This is the payload structure of your JWT (edit as per your app)
+    interface UserJwtPayload {
+      sub: string; // user id
+      email: string;
+      role?: string; // optional, for role-based auth
+    }
+
+    interface Request {
+      user?: UserJwtPayload;
+    }
+  }
+}
+export {}; // 👈 ensures this file is treated as a module

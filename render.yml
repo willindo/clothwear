@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: backnest
+    env: node
+    region: frankfurt
+    plan: free
+    buildCommand: "npm ci && npm run build"
+    startCommand: "npm run start:prod"
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: postgres
+          name: setupnest
+          property: connectionString
+      - key: FRONTEND_URL
+        value: "https://front-commerce-rust.vercel.app"
+      - key: RENDER
+        value: "true"
+
+databases:
+  - name: mono_commerce
+    plan: free

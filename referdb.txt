@@ -1,0 +1,26 @@
+
+| Command                              | When to use             | Description                                        |
+| ------------------------------------ | ----------------------- | -------------------------------------------------- |
+| `npx prisma db push`                 | Dev only                | Sync schema directly to DB (no migration tracking) |
+| `npx prisma migrate dev --name init` | Dev or first-time setup | Create migration + sync                            |
+| `npx prisma migrate deploy`          | Prod                    | Apply migrations only (Render startup scripts)     |
+| `npx prisma generate`                | Anytime schema changes  | Regenerate Prisma client and Zod                   |
+| `npx prisma studio`                  | Dev debugging           | View/edit DB                                       |
+| `npx prisma db pull`                 | Reverse sync            | Pull schema from existing DB                       |
+| `npx prisma format`                  | Code hygiene            | Format schema.prisma                               |
+
+
+
+npx prisma migrate dev --name init
+
+npx prisma migrate dev --name init --create-only
+npx prisma db push
+
+cp .env.development .env  
+npx prisma db push --force-reset
+cp -r /home/badsha/dev/mono-commerce/src/generated /home/badsha/dev/front-commerce/src
+
+docker compose up -d db
+docker ps
+psql -h localhost -U postgres -d mono_commerce_dev
+npx prisma migrate dev --name init_dev_db
